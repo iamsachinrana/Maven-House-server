@@ -1,0 +1,40 @@
+{
+  "USER": {
+    "privilege": "User & Role Management",
+    "options": {
+      "0": "Create user",
+      "1": "Update user",
+      "2": "Delete user",
+      "3": "Create role",
+      "4": "Update role",
+      "5": "Delete role"
+    }
+  },
+  "PROGRAM": {
+    "privilege": "Program & Package Management",
+    "options": {
+      "0": "Create program",
+      "1": "Update program",
+      "2": "Publish/Unpublish program",
+      "3": "Delete program",
+      "4": "Create package",
+      "5": "Update package",
+      "6": "Publish/Unpublish package",
+      "7": "Delete package"
+    }
+  },
+  "BOOKING": {
+    "privilege": "Booking Management",
+    "options": {
+      "0": "Confirm Booking Request",
+      "1": "Reject Booking Request"
+    }
+  },
+  "TICKET": {
+    "privilege": "Ticket Management",
+    "options": {
+      "0": "View Tickets",
+      "1": "Update Ticket Status"
+    }
+  }
+}
