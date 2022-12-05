@@ -29,6 +29,35 @@ class userController {
     res.send({ data: req.files ? getMultipleAssets(file_names) : null });
   };
 
+  authUser(req, res) {
+    const { address, signature } = { ...req.body };
+    user.authUserModel(address, signature, (data, error) => {
+      const response = { status: 0, data: null, error: null };
+      if (err) {
+        response.status = 0;
+        response.error = error;
+      } else {
+        response.status = 1;
+        response.data = data;
+      }
+      res.send()
+    })
+  };
+
+  authConsent(req, res) {
+    const { address } = { ...req.params };
+    user.authConsentModel(address, (data, error) => {
+      const response = { status: 0, data: null, error: null };
+      if (err) {
+        response.status = 0;
+        response.error = error;
+      } else {
+        response.status = 1;
+        response.data = data;
+      }
+      res.send()
+    })
+  };
 
   getUser(req, res) {
     const { id } = req.query;

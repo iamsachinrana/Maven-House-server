@@ -28,9 +28,15 @@
     "pg": "^8.8.0",
     "pool": "^0.4.1",
     "util": "^0.12.5",
+    "utils": "^0.3.1",
     "uuid": "^9.0.0",
     "validate-phone-number-node-js": "^0.0.1",
     "validator": "^13.7.0",
-    "validatorjs": "^3.22.1"
+    "validatorjs": "^3.22.1",
+    "web3": "^1.8.1",
+    "web3-core": "^1.8.1",
+    "web3-core-helpers": "^1.8.1",
+    "web3-eth-contract": "^1.8.1",
+    "web3-utils": "^1.8.1"
   }
 }

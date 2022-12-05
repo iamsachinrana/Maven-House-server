@@ -15,7 +15,13 @@ const { profile } = require('console');
 const pipeline = util.promisify(stream.pipeline);
 const isValidFileType = require('../../utils/validators');
 const md5 = require('md5');
+const {
+  web3, getAuthConsentMessage
+} = require('../../web3');
+
+const { utils } = require('../../web3');
 class userModel {
+
   getUserModel(id, callback) {
     const sql = `SELECT * FROM users where id = $1`;
     const values = [id];
@@ -28,6 +34,82 @@ class userModel {
       }
     });
   }
+
+
+  async authUserModel(address, signature, callback) {
+
+    if (!web3.utils.isAddress(address)) {
+      callback(false, translations['en']['MSG019']);
+    }
+
+    address = web3.utils.toChecksumAddress(address);
+    const sql = 'SELETCT * FROM users wallet_address = $1';
+    const values = [address];
+    connection.query(sql, values, (err, result) => {
+
+      if (err) {
+        ERROR(err);
+        callback(false, translations['en']['SYSTEM_ERROR']);
+      } else {
+        const authConsentMessage = getAuthConsentMessage(address, user.nonce);
+        if (verifySignature(authConsentMessage, address, signature)) {
+          const user = {
+            id: result.id,
+            address: result.address,
+            status: result.status,
+            type: result.user_type,
+          }
+
+          Jwt.sign({ user }, process.env.JWT_TOKEN_SECRET, { expiresIn: '1 days' }, (err, result) => {
+            if (err) {
+              callback(false, translations['en']['SYSTEM_ERROR']);
+            } else {
+              user.nonce = Math.floor((Math.random() + 1) * 100000);
+              const data = { token, };
+              callback();
+            }
+          })
+        } else {
+          callback(error, translations['en']['MSG014']);
+        }
+      }
+    })
+  };
+
+
+  async authConsentModel(address) {
+
+    if (!web3.utils.isAddress(address))
+      callback(false, translations['en']['MSG019']);
+
+    address = web3.utils.toChecksumAddress(address);
+
+    const sql = `SELECT * FROM users WHERE wallet_address = $1`;
+    const values = [address];
+    connection.query(sql, values, (err, result) => {
+      if (err) {
+        ERROR(err);
+        callback(false, translations['en']['SYSTEM_ERROR']);
+      } else {
+
+      }
+    });
+
+    if (user instanceof Error) return user;
+    if (!user) {
+      const newUser = new Users({ address });
+      user = await newUser.save().catch((err) => err);
+
+      if (user instanceof Error) return user;
+    }
+
+    const authConsentMessage = getAuthConsentMessage(address, user.nonce);
+
+    return {
+      data: { consent: authConsentMessage }
+    };
+  };
+
 
   async updateUserModel(id, first_name, last_name, email, phone, instagram_id, bio, wallet_address, filename, path, callback) {
     if (fs.existsSync(path)) {
@@ -69,31 +151,32 @@ class userModel {
 
   async createEventModel(user_id, name, type, category, ticket_amount, date, total_tickets, short_description, long_description, ticket_image, gallery, link, host, location, stages, callback) {
 
-    // ticket_image = setAsset(ticket_image);
-    // gallery = setMultipleAssets(gallery);
+    ticket_image = setAsset(ticket_image);
+    gallery = setMultipleAssets(gallery);
 
-    // /*ticket images*/
-    // if (!ticket_image) return { error: 'ticket image is required' };
-    // if (ticket_image && !isValidFileType(ticket_image, ['png', 'jpeg', 'jpg'])) return { error: 'not verified image' };
-    // await exec(`mv ${ROOT_DIR}/uploads/'${ticket_image}' ${ROOT_DIR}/uploads/ticket_images/${ticket_image}`);
+    /*ticket images*/
+    if (!ticket_image) return { error: 'ticket image is required' };
+    if (ticket_image && !isValidFileType(ticket_image, ['png', 'jpeg', 'jpg'])) return { error: 'not verified image' };
+    await exec(`mv ${ROOT_DIR}/uploads/'${ticket_image}' ${ROOT_DIR}/uploads/ticket_images/${ticket_image}`);
 
-    // /**gallery images*/
-    // if (!gallery) return { error: 'gallery images not found' };
-    // for (let i = 0; i < gallery.length; i++) {
-    //   if (gallery && !isValidFileType(gallery[i], ['png', 'jpeg', 'jpg', 'gif'])) return { error: 'Unsupported file format, Please upload only allowed file format' };
-    // }
-    // if (gallery) {
-    //   for (let i = 0; i < gallery.length; i++) {
-    //     await exec(`mv ${ROOT_DIR}/uploads/'${gallery[i]}' ${ROOT_DIR}/uploads/gallery_images/${gallery[i]}`);
-    //   }
-    // }
-
+    /**gallery images*/
+    if (!gallery) return { error: 'gallery images not found' };
+    for (let i = 0; i < gallery.length; i++) {
+      if (gallery && !isValidFileType(gallery[i], ['png', 'jpeg', 'jpg', 'gif'])) return { error: 'Unsupported file format, Please upload only allowed file format' };
+    }
+    if (gallery) {
+      for (let i = 0; i < gallery.length; i++) {
+        await exec(`mv ${ROOT_DIR}/uploads/'${gallery[i]}' ${ROOT_DIR}/uploads/gallery_images/${gallery[i]}`);
+      }
+    }
+    user_id = 56;
     const sql = `INSERT INTO events(user_id,name,type,category,ticket_amount,date,total_tickets,short_description, long_description,ticket_image,gallery,link,host,location,stages,status,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,0,CURRENT_TIMESTAMP) RETURNING *`;
 
     const values = [user_id, name, type, category, ticket_amount, date, total_tickets, short_description, long_description, ticket_image, gallery, link, host, location, stages];
 
     connection.query(sql, values, (err, result) => {
       if (err) {
+        console.log(err);
         Error(err);
         callback(false, translations['en']['SYSTEM_ERROR']);
       } else {
@@ -130,27 +213,27 @@ class userModel {
 
   async updateEventModel(id, event_id, name, type, category, ticket_amount, date, total_tickets, short_description, long_description, ticket_image, gallery, link, host, location, stages, callback) {
 
-    // ticket_image = setAsset(ticket_image);
-    // gallery = setMultipleAssets(gallery);
+    ticket_image = setAsset(ticket_image);
+    gallery = setMultipleAssets(gallery);
 
-    // /*ticket images*/
-    // if (!ticket_image) return { error: 'ticket image is required' };
-    // if (ticket_image && !isValidFileType(ticket_image, ['png', 'jpeg', 'jpg'])) return { error: 'not verified image' };
+    /*ticket images*/
+    if (!ticket_image) return { error: 'ticket image is required' };
+    if (ticket_image && !isValidFileType(ticket_image, ['png', 'jpeg', 'jpg'])) return { error: 'not verified image' };
 
-    // await exec(`mv ${ROOT_DIR}/uploads/'${ticket_image}' ${ROOT_DIR}/uploads/ticket_images/${ticket_image}`);
+    await exec(`mv ${ROOT_DIR}/uploads/'${ticket_image}' ${ROOT_DIR}/uploads/ticket_images/${ticket_image}`);
 
-    // /**gallery images*/
-    // if (!gallery) return { error: 'gallery images not found' };
+    /**gallery images*/
+    if (!gallery) return { error: 'gallery images not found' };
 
-    // for (let i = 0; i < gallery.length; i++) {
-    //   if (gallery && !isValidFileType(gallery[i], ['png', 'jpeg', 'jpg', 'gif'])) return { error: 'Unsupported file format, Please upload only allowed file format' };
-    // }
+    for (let i = 0; i < gallery.length; i++) {
+      if (gallery && !isValidFileType(gallery[i], ['png', 'jpeg', 'jpg', 'gif'])) return { error: 'Unsupported file format, Please upload only allowed file format' };
+    }
 
-    // if (gallery) {
-    //   for (let i = 0; i < gallery.length; i++) {
-    //     await exec(`mv ${ROOT_DIR}/uploads/'${gallery[i]}' ${ROOT_DIR}/uploads/gallery_images/${gallery[i]}`);
-    //   }
-    // }
+    if (gallery) {
+      for (let i = 0; i < gallery.length; i++) {
+        await exec(`mv ${ROOT_DIR}/uploads/'${gallery[i]}' ${ROOT_DIR}/uploads/gallery_images/${gallery[i]}`);
+      }
+    }
 
 
     const sql = `UPDATE events SET name = $1,type = $2,category= $3,ticket_amount = $4, date = $5,total_tickets = $6 ,short_description=$7 ,long_description = $8,ticket_image = $9 , gallery = $10, link = $11, host = $12,location = $13,stages = $14, updated_at = CURRENT_TIMESTAMP WHERE id = $15 AND user_id=$16`;

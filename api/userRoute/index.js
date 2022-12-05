@@ -12,6 +12,9 @@ const user = new userController;
 router.post('/upload-asset', upload.single('asset'), user.uploadAsset);
 router.post('/upload-multiple-assets', upload.array('asset', 10), user.uploadAssets);
 
+router.post('/authenticate', user.authUser);
+router.get('/authenticate/:address', user.authConsent);
+
 /*user-profile*/
 router.get('/profile', user.getUser);
 router.put('/profile', upload.single('profile_image'), user.updateUser);

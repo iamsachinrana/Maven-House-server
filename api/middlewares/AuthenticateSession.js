@@ -1,20 +1,15 @@
 const jwt = require('jsonwebtoken');
-
-// FORMAT OF TOKEN
-// Authorization: Bearer <access_token>
+const { model } = require('mongoose');
 
 module.exports = AuthenticateSession = (req, res, next) => {
   // Get auth header value
   const bearerHeader = req.headers['authorization'];
+  console.log(req.headers['authorization']);
   // Check if bearer is undefined
   if (typeof bearerHeader !== 'undefined') {
-    // Split at the space
-    const bearer = bearerHeader.split(' ');
-    // Get token from array
-    const bearerToken = bearer[1];
-    // Set the token
-    req.token = bearerToken;
-    // Verify token
+    const bearerToken = bearerHeader.split(' ')[1];  /*Split at the space and get Token */
+    req.token = bearerToken; /**set token*/
+    /*verify token*/
     jwt.verify(bearerToken, process.env.TOKEN_SECRET_KEY, (err, data) => {
       if (err) {
         res.sendStatus(403);
