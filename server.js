@@ -29,6 +29,24 @@ global.ROOT_DIR = path.resolve(__dirname);
 /* Create uploads directories */
 require('./config').CREATE_UPLOADS_DIR();
 
+
+/* Global DB connection */
+global.client = require('./db.config');
+
+global.DBQuery = async (sql) => {
+  const promise = new Promise((resolve, reject) => {
+    client.query(sql, (err, result) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(result);
+      };
+    });
+  });
+
+  return await promise.catch(error => error);
+};
+
 // global.isOTPAuthenticated = async (user_id, OTP) => {
 //   const response = await DBQuery(`select phone_number from user_master where  id = ${user_id}`);
 //   if (response instanceof Error || response.length == 0) {

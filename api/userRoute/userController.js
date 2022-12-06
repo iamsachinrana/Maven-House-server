@@ -30,32 +30,32 @@ class userController {
   };
 
   authUser(req, res) {
-    const { address, signature } = { ...req.body };
+    const { address, signature } = req.body;
     user.authUserModel(address, signature, (data, error) => {
       const response = { status: 0, data: null, error: null };
-      if (err) {
+      if (data === false) {
         response.status = 0;
         response.error = error;
       } else {
         response.status = 1;
         response.data = data;
       }
-      res.send()
+      res.send(response);
     })
   };
 
   authConsent(req, res) {
-    const { address } = { ...req.params };
+    const { address } = req.params;
     user.authConsentModel(address, (data, error) => {
       const response = { status: 0, data: null, error: null };
-      if (err) {
+      if (data === false) {
         response.status = 0;
         response.error = error;
       } else {
         response.status = 1;
         response.data = data;
       }
-      res.send()
+      res.send(response);
     })
   };
 
@@ -381,6 +381,53 @@ class userController {
       }
     }).catch(err => console.log(err))
   };
+
+  getUserDetail(req, res) {
+    const { language } = req.query;
+    const id = 65;
+    user.getUserDetailModel(id, language, (data, error) => {
+      let response = { status: 0, data: null, error: null };
+      if (data === false) {
+        response.status = 0;
+        response.error = error;
+      } else {
+        response.status = 1;
+        response.data = data;
+      }
+      res.send(response);
+    })
+  }
+
+  createStream(req, res) {
+    const { language, api_key } = req.body;
+    user.createStreamModel(api_key, language, (data, error) => {
+      let response = { status: 0, data: null, error: null };
+      if (data === false) {
+        response.status = 0;
+        response.error = error;
+      } else {
+        response.status = 1;
+        response.data = data;
+      }
+      res.send(response);
+    })
+  }
+
+  getStream(req, res) {
+    const { language, api_key, stream_id } = req.body;
+    const authorizationHeader = req.headers && req.headers["authorization"];
+    user.getStreamModel(authorizationHeader, api_key, stream_id, language, (data, error) => {
+      let response = { status: 0, data: null, error: null };
+      if (data === false) {
+        response.status = 0;
+        response.error = error;
+      } else {
+        response.status = 1;
+        response.data = data;
+      }
+      res.send(response);
+    })
+  }
 };
 
 module.exports = userController;

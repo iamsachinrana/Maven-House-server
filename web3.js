@@ -3,9 +3,9 @@ const { AbiItem } = require('web3-utils');
 const { Contract } = require('web3-eth-contract');
 const { HttpProvider, WebsocketProvider, Account, TransactionReceipt } = require('web3-core');
 const { WebsocketProviderOptions } = require('web3-core-helpers');
-const { Chain, Provider, Event, Token } = require('../types');
-const Contracts = require('./contracts');
-const { OrderSide } = require('../models/Arts');
+// const { Chain, Provider, Event, Token } = require('../types');
+// const Contracts = require('./contracts');
+// const { OrderSide } = require('../models/Arts');
 
 const web3 = new Web3();
 /**
@@ -55,13 +55,13 @@ const getZeroAddress = () => {
 /**
  * Contracts json interfaces mapping with chain
  */
-module.exports = contractJsonInterfaces = {
+/*module.exports = contractJsonInterfaces = {
   Registry: Contracts.Registry,
   Exchange: Contracts.Exchange,
   AssetContractShared: Contracts.AssetContractShared,
   WETH: Contracts.WETH,
   MATIC: Contracts.MATIC
-};
+}; */
 
 /**
  * Deployed exchange contract on network
@@ -81,7 +81,7 @@ module.exports = exchange = {
 /**
  * Deployed contracts on network
  */
-modeule.exports = contracts = {
+/*modeule.exports = contracts = {
   ETHEREUM: {
     Registry: '0x3E86715D2858b2d1Fe075a536BC9a86830b8a67D',
     AssetContractShared: '0x4e58a8024ABb96169CEe83932523AC478956563c'
@@ -90,7 +90,7 @@ modeule.exports = contracts = {
     Registry: '0x6Bfa757b740b7cee3EA6ac55bB9369881E164f48',
     AssetContractShared: '0x85d490B274d7BF7c5BdE005e3fA37B2d275bf691'
   }
-};
+}; */
 
 /**
  * Token contract address on network
@@ -114,7 +114,7 @@ module.exports = tokenAddress = {
  * @param token Token
  * @returns string
  */
-const getContractAddress = (chain, contract, token) => {
+/*const getContractAddress = (chain, contract, token) => {
   if (contract === 'Exchange' && token) {
     return exchange[chain][token] || getZeroAddress();
   } else if (contract !== 'Exchange') {
@@ -122,15 +122,15 @@ const getContractAddress = (chain, contract, token) => {
   } else {
     return getZeroAddress();
   }
-};
+}; */
 
 /**
  * Wallets public & private key
  */
-module.exports = wallets = {
+/*module.exports = wallets = {
   ETHEREUM: new Web3(getProvider(Chain.ETHEREUM, Provider.HTTPS)).eth.accounts.privateKeyToAccount(process.env.WALLET_PRIVATE_KEY || ''),
   POLYGON: new Web3(getProvider(Chain.POLYGON, Provider.HTTPS)).eth.accounts.privateKeyToAccount(process.env.WALLET_PRIVATE_KEY || '')
-};
+}; */
 
 /**
  * Get wallet public address
@@ -223,7 +223,7 @@ const getContractInstance = (contract, address, chain, provider) => {
  * @returns string
  */
 const getAuthConsentMessage = (address, nonce) => {
-  return `Welcome to Artzcape!\n\nClick to sign in and accept the Artzcape Terms of Service: ${process.env.CLIENT_URL}/tos\n\nThis request will not trigger a blockchain transaction or cost any gas fees.\n\nYour authentication status will reset after 24 hours.\n\nWallet address:\n${web3.utils.toChecksumAddress(address)}\n\nNonce:\n${nonce}`;
+  return `Welcome to Maven!\n\nClick to sign in and accept the Artzcape Terms of Service: ${process.env.CLIENT_URL}/tos\n\nThis request will not trigger a blockchain transaction or cost any gas fees.\n\nYour authentication status will reset after 24 hours.\n\nWallet address:\n${web3.utils.toChecksumAddress(address)}\n\nNonce:\n${nonce}`;
 };
 
 /**
@@ -339,4 +339,4 @@ const getTransactionGasFees = async (transactionHash, chain) => {
   return gas;
 };
 
-module.exports = { web3, getZeroAddress, getProvider, getContractAddress, getWalletAddress, transferAmount, getContractInstance, getAuthConsentMessage, getHashMessage, generateTokenId, getCalldata, getReplacementPattern, subscribeEvent, getTransactionGasFees };
+module.exports = { web3, getZeroAddress, getProvider, getWalletAddress, transferAmount, getContractInstance, getAuthConsentMessage, getHashMessage, generateTokenId, getCalldata, getReplacementPattern, subscribeEvent, getTransactionGasFees };

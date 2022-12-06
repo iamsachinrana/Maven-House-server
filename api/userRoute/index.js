@@ -32,6 +32,11 @@ router.post('/ticket', user.bookTicket);
 router.get('/ticket', user.getTicket);
 router.get('/tickets', user.getTickets);
 
+/*Streaming*/
+router.get('/get-user-detail', user.getUserDetail);
+router.post('/create-stream', user.createStream);
+router.post('/get-stream', user.getStream);
+
 /*change password*/
 router.post('/change-password', user.changePassword);
 

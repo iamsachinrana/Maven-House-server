@@ -13,13 +13,16 @@ const stream = require('stream');
 const connection = require('../../db.config');
 const { profile } = require('console');
 const pipeline = util.promisify(stream.pipeline);
-const isValidFileType = require('../../utils/validators');
+const { isValidFileType, verifySignature } = require('../../utils/validators');
 const md5 = require('md5');
+const axios = require('axios');
+let randomstring = require("randomstring");
 const {
-  web3, getAuthConsentMessage
+  web3, getAuthConsentMessage, generateTokenId, getContractAddress,
+  getZeroAddress, getCalldata, getReplacementPattern,
+  getHashMessage, getWalletAddress, tokenAddress
 } = require('../../web3');
 
-const { utils } = require('../../web3');
 class userModel {
 
   getUserModel(id, callback) {
@@ -37,77 +40,73 @@ class userModel {
 
 
   async authUserModel(address, signature, callback) {
-
     if (!web3.utils.isAddress(address)) {
       callback(false, translations['en']['MSG019']);
     }
 
     address = web3.utils.toChecksumAddress(address);
-    const sql = 'SELETCT * FROM users wallet_address = $1';
+
+    const sql = 'SELECT * FROM users WHERE wallet_address = $1';
     const values = [address];
     connection.query(sql, values, (err, result) => {
-
       if (err) {
-        ERROR(err);
         callback(false, translations['en']['SYSTEM_ERROR']);
       } else {
-        const authConsentMessage = getAuthConsentMessage(address, user.nonce);
+        const authConsentMessage = getAuthConsentMessage(address, result.rows[0].nounce);
+
+        // console.log(verifySignature(authConsentMessage, address, signature))
+
         if (verifySignature(authConsentMessage, address, signature)) {
+
           const user = {
-            id: result.id,
-            address: result.address,
-            status: result.status,
-            type: result.user_type,
+            id: result.rows[0].id,
+            address: result.rows[0].address,
+            status: result.rows[0].status,
+            type: result.rows[0].user_type,
           }
 
-          Jwt.sign({ user }, process.env.JWT_TOKEN_SECRET, { expiresIn: '1 days' }, (err, result) => {
+          jwt.sign({ user }, process.env.TOKEN_SECRET_KEY, { expiresIn: '1 days' }, async (err, result) => {
             if (err) {
-              callback(false, translations['en']['SYSTEM_ERROR']);
+              callback(false, err);
             } else {
-              user.nonce = Math.floor((Math.random() + 1) * 100000);
-              const data = { token, };
-              callback();
+              // console.log(result)
+              const nonce = Math.floor((Math.random() + 1) * 100000);
+
+              //Update nonce
+              await DBQuery(`UPDATE users SET nounce = '${nonce}' WHERE wallet_address = '${address}'`);
+
+              callback({ token: result });
             }
           })
         } else {
-          callback(error, translations['en']['MSG014']);
+          callback(false, translations['en']['MSG014']);
         }
       }
     })
   };
 
-
-  async authConsentModel(address) {
-
-    if (!web3.utils.isAddress(address))
+  async authConsentModel(address, callback) {
+    if (!web3.utils.isAddress(address)) {
       callback(false, translations['en']['MSG019']);
-
+    }
     address = web3.utils.toChecksumAddress(address);
 
-    const sql = `SELECT * FROM users WHERE wallet_address = $1`;
-    const values = [address];
-    connection.query(sql, values, (err, result) => {
-      if (err) {
-        ERROR(err);
-        callback(false, translations['en']['SYSTEM_ERROR']);
-      } else {
+    const wallet_details = await DBQuery(`SELECT * FROM users WHERE wallet_address = '${address}'`);
 
-      }
-    });
+    if (wallet_details.rows.length === 0) {
 
-    if (user instanceof Error) return user;
-    if (!user) {
-      const newUser = new Users({ address });
-      user = await newUser.save().catch((err) => err);
+      const nonce = Math.floor((Math.random() + 1) * 100000);
+      const wallet_details = await DBQuery(`INSERT INTO users(wallet_address,nounce) VALUES('${address}','${nonce}')`);
+      const authConsentMessage = getAuthConsentMessage(address, nonce);
+      callback({ authConsentMessage: authConsentMessage });
+    } else {
 
-      if (user instanceof Error) return user;
+      const wallet_details = await DBQuery(`SELECT * FROM users WHERE wallet_address = '${address}'`);
+      const authConsentMessage = getAuthConsentMessage(address, wallet_details.rows[0]?.nounce);
+      callback({ authConsentMessage: authConsentMessage });
     }
 
-    const authConsentMessage = getAuthConsentMessage(address, user.nonce);
 
-    return {
-      data: { consent: authConsentMessage }
-    };
   };
 
 
@@ -372,6 +371,89 @@ class userModel {
       }
     });
   };
+
+  getUserDetailModel(id, language, callback) {
+    const sql = `select * from users where id = '${id}'`;
+    connection.query(sql, (err, _result) => {
+      if (err) {
+        callback(false, translations[language]['SYSTEM_ERROR']);
+      } else {
+        callback(_result.rows);
+      }
+    })
+  }
+
+  async createStreamModel(api_key, language, callback) {
+    try {
+      const AuthStr = "Bearer ".concat(api_key);
+
+      let digit = randomstring.generate({
+        length: 5,
+        charset: 'alphabetic'
+      });
+
+      let streamData = {
+        name: digit,
+        profiles: [
+          {
+            name: "720p",
+            bitrate: 2000000,
+            fps: 30,
+            width: 1280,
+            height: 720,
+          },
+          {
+            name: "480p",
+            bitrate: 1000000,
+            fps: 30,
+            width: 854,
+            height: 480,
+          },
+          {
+            name: "360p",
+            bitrate: 500000,
+            fps: 30,
+            width: 640,
+            height: 360,
+          },
+        ],
+      };
+
+      const value = await axios({
+        method: "post",
+        url: "https://livepeer.studio/api/stream",
+        data: streamData,
+        headers: {
+          "content-type": "application/json",
+          Authorization: AuthStr,
+        },
+      })
+      callback(value.data);
+    } catch (err) {
+      console.log(err)
+      callback(false, err);
+    }
+  }
+
+  async getStreamModel(authorizationHeader, api_key, stream_id, language, callback) {
+
+    try {
+      const streamStatusResponse = await axios.get(
+        `https://livepeer.com/api/stream/${stream_id}`,
+        {
+          headers: {
+            "content-type": "application/json",
+            authorization: authorizationHeader, // API Key needs to be passed as a header
+          },
+        }
+      );
+
+      callback(streamStatusResponse.data);
+    } catch (error) {
+      console.log(error)
+      callback(error);
+    }
+  }
 
 }
 
