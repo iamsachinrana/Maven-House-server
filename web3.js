@@ -223,7 +223,11 @@ const getContractInstance = (contract, address, chain, provider) => {
  * @returns string
  */
 const getAuthConsentMessage = (address, nonce) => {
-  return `Welcome to Maven!\n\nClick to sign in and accept the Artzcape Terms of Service: ${process.env.CLIENT_URL}/tos\n\nThis request will not trigger a blockchain transaction or cost any gas fees.\n\nYour authentication status will reset after 24 hours.\n\nWallet address:\n${web3.utils.toChecksumAddress(address)}\n\nNonce:\n${nonce}`;
+  return `Welcome to Maven!\n\nClick to sign in and accept the Maven Terms of Service: ${process.env.CLIENT_URL}/tos\n\nThis request will not trigger a blockchain transaction or cost any gas fees.\n\nYour authentication status will reset after 24 hours.\n\nWallet address:\n${web3.utils.toChecksumAddress(address)}\n\nNonce:\n${nonce}`;
+};
+
+const getEventAuthConsentMessage = (event_id, wallet_id, nonce) => {
+  return `Welcome to Maven Live!\n\nClick to verify and accept that you own a ticket for Street ${event_id}. Live Event. This request will not trigger a blockchain transaction or cost any gas fees.\n\nWallet address:\n${web3.utils.toChecksumAddress(wallet_id)}\n\nNonce:\n${nonce}`;
 };
 
 /**
@@ -339,4 +343,4 @@ const getTransactionGasFees = async (transactionHash, chain) => {
   return gas;
 };
 
-module.exports = { web3, getZeroAddress, getProvider, getWalletAddress, transferAmount, getContractInstance, getAuthConsentMessage, getHashMessage, generateTokenId, getCalldata, getReplacementPattern, subscribeEvent, getTransactionGasFees };
+module.exports = { web3, getZeroAddress, getProvider, getWalletAddress, transferAmount, getContractInstance, getAuthConsentMessage, getHashMessage, generateTokenId, getCalldata, getReplacementPattern, subscribeEvent, getTransactionGasFees, getEventAuthConsentMessage };

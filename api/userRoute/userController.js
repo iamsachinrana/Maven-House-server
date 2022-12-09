@@ -59,6 +59,34 @@ class userController {
     })
   };
 
+  authenticateEvent(req, res) {
+    const { event_id, address, signature } = req.body;
+    user.authenticateEventModel(event_id, address, signature, (data, error) => {
+      const response = { status: 0, data: null, error: null };
+      if (data === false) {
+        response.status = 0;
+        response.error = error;
+      } else {
+        response.status = 1;
+        response.data = data;
+      }
+      res.send(response);
+    })
+  }
+  authConsentEvent(req, res) {
+    const { event_id, wallet_id } = req.params;
+    user.authConsentEventModel(event_id, wallet_id, (data, error) => {
+      const response = { status: 0, data: null, error: null };
+      if (data === false) {
+        response.status = 0;
+        response.error = error;
+      } else {
+        response.status = 1;
+        response.data = data;
+      }
+      res.send(response);
+    })
+  }
   getUser(req, res) {
     const { id } = req.query;
     user.getUserModel(id, (data, error) => {
@@ -153,7 +181,6 @@ class userController {
       "type": "required",
       "category": "required",
       "ticket_amount": "required",
-      "date": "required",
       "total_tickets": "required",
       "short_description": "required",
       "long_description": "required",
@@ -173,8 +200,11 @@ class userController {
             error: err
           });
       } else {
-        const { id, name, type, category, ticket_amount, date, total_tickets, short_description, long_description, ticket_image, gallery, link, host, location, stages } = req.body;
-        user.createEventModel(id, name, type, category, ticket_amount, date, total_tickets, short_description, long_description, ticket_image, gallery, link, host, location, stages, (data, error) => {
+
+        // console.log("call")
+        const user_id = 65;
+        const { name, type, category, ticket_amount, start_date, end_date, total_tickets, short_description, long_description, ticket_image, gallery, link, host, location } = req.body;
+        user.createEventModel(user_id, name, type, category, ticket_amount, start_date, end_date, total_tickets, short_description, long_description, ticket_image, gallery, link, host, location, (data, error) => {
           let response = { status: 0, data: null, error: null };
           if (data === false) {
             response.status = 0;
@@ -399,8 +429,9 @@ class userController {
   }
 
   createStream(req, res) {
-    const { language, api_key } = req.body;
-    user.createStreamModel(api_key, language, (data, error) => {
+    const { user_id, api_key, language } = req.body;
+
+    user.createStreamModel(user_id, api_key, language, (data, error) => {
       let response = { status: 0, data: null, error: null };
       if (data === false) {
         response.status = 0;
@@ -417,6 +448,21 @@ class userController {
     const { language, api_key, stream_id } = req.body;
     const authorizationHeader = req.headers && req.headers["authorization"];
     user.getStreamModel(authorizationHeader, api_key, stream_id, language, (data, error) => {
+      let response = { status: 0, data: null, error: null };
+      if (data === false) {
+        response.status = 0;
+        response.error = error;
+      } else {
+        response.status = 1;
+        response.data = data;
+      }
+      res.send(response);
+    })
+  }
+
+  getLivePlayBack(req, res) {
+    const { language, user_id } = req.query;
+    user.getLivePlayBackModel(language, user_id, (data, error) => {
       let response = { status: 0, data: null, error: null };
       if (data === false) {
         response.status = 0;

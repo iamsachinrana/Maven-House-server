@@ -12,8 +12,8 @@ const user = new userController;
 router.post('/upload-asset', upload.single('asset'), user.uploadAsset);
 router.post('/upload-multiple-assets', upload.array('asset', 10), user.uploadAssets);
 
-router.post('/authenticate', user.authUser);
 router.get('/authenticate/:address', user.authConsent);
+router.post('/authenticate', user.authUser);
 
 /*user-profile*/
 router.get('/profile', user.getUser);
@@ -21,8 +21,8 @@ router.put('/profile', upload.single('profile_image'), user.updateUser);
 router.delete('/profile', user.deleteUser);
 
 /*events*/
-router.post('/event', user.createEvent);
-router.get('/events', user.getAllEvents);
+router.post('/create-event', user.createEvent);
+router.get('/get-events', user.getAllEvents);
 router.get('/event', user.getEvent);
 router.put('/event', user.updateEvent);
 router.delete('/event', user.deleteEvent);
@@ -32,10 +32,17 @@ router.post('/ticket', user.bookTicket);
 router.get('/ticket', user.getTicket);
 router.get('/tickets', user.getTickets);
 
+router.get('/join-event/:event_id/:wallet_id', user.authConsentEvent);
+router.post('/join-event-authenticate', user.authenticateEvent);
+
 /*Streaming*/
 router.get('/get-user-detail', user.getUserDetail);
 router.post('/create-stream', user.createStream);
 router.post('/get-stream', user.getStream);
+
+
+router.get('/get-live-playback', user.getLivePlayBack);
+
 
 /*change password*/
 router.post('/change-password', user.changePassword);

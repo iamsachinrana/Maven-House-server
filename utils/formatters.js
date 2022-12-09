@@ -40,7 +40,8 @@ const sendHttpResponse = (res, serverResponse) => {
 const getAsset = (asset, collection) => {
   try {
     if (asset)
-      return `${process.env.CLIENT_URL}/${collection ? `${collection}/${asset}` : `${asset}`}`;
+
+      return `${process.env.API_LOCAL_URL}/${collection ? `${collection}/${asset}` : `${asset}`}`;
     return null;
   } catch (e) {
     return null;
@@ -49,7 +50,7 @@ const getAsset = (asset, collection) => {
 
 const getMultipleAssets = (assets, collection) => {
   try {
-    if (assets && assets instanceof Array) return assets.map(asset => `${process.env.CLIENT_URL}/${collection ? `${collection}/${asset}` : `${asset}`}`);
+    if (assets && assets instanceof Array) return assets.map(asset => `${process.env.API_LOCAL_URL}/${collection ? `${collection}/${asset}` : `${asset}`}`);
     return null;
   } catch (e) {
     return null;
