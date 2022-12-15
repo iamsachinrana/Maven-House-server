@@ -30,6 +30,7 @@ const {
 const { response } = require('express');
 const { parse } = require('path');
 const abis = require("@unlock-protocol/contracts");
+const {signAccessJwt} = require('livepeer/crypto');
 
 class userModel {
 
@@ -194,22 +195,21 @@ class userModel {
             //Update nonce
             const nonce = Math.floor((Math.random() + 1) * 100000);
             await DBQuery(`UPDATE users SET nounce = '${nonce}' WHERE wallet_address = '${address}'`);
-
             //Check Token Gating
-            const sql = `SELECT contract_address FROM events WHERE id = $1`;
+            const sql = `SELECT e.contract_address, s.playback_id FROM events e LEFT JOIN streams s ON s.user_id = e.id WHERE e.id = $1`;
             const values = [event_id];
             connection.query(sql, values, async (err, result) => {
               if (err) {
-                Error(err);
                 callback(false, translations['en']['SYSTEM_ERROR']);
               } else {
                 if (result) {
-                  const { contract_address } = result?.rows[0];
+                  const { contract_address, playback_id } = result?.rows[0];
+
                   let url = 'https://rpc-mumbai.maticvigil.com/';
                   let provider = new ethers.providers.JsonRpcProvider(url);
                   const contract = new ethers.Contract(contract_address, abis.PublicLockV11.abi, provider);
-                  console.log(JSON.stringify(contract_address));
-                  console.log(address);
+
+
                   let tokenBalance = (await contract.balanceOf(`${address}`)).toString();
                   if (parseInt(tokenBalance) > 0) {
                     const user = {
@@ -224,7 +224,21 @@ class userModel {
                       if (err) {
                         callback(false, err);
                       } else {
-                        callback({ token: result });
+                            const accessControlPrivateKey = process.env.LIVEPEER_PRIVATE_KEY;
+                            const accessControlPublicKey = process.env.LIVEPEER_PUBLIC_KEY;
+                            const token = await signAccessJwt({
+                              privateKey: accessControlPrivateKey,
+                              publicKey: accessControlPublicKey,
+                              issuer: 'https://livepeerjs.org',
+                              // playback ID to include in the JWT
+                              playbackId: playback_id,
+                              // expire the JWT in 1 hour
+                              expiration: '1h',
+                              custom: {
+                                userId: address
+                              }
+                            });
+                        callback({ token: token });
                       }
                     })
                   }
@@ -235,6 +249,9 @@ class userModel {
               }
             })
             // Set jwt token
+              /*Create a JWT TOKEN For USER*/
+
+            
 
           } else {
             // User is not authenticated
@@ -354,7 +371,7 @@ class userModel {
 
 
 
-  async createEventModel(user_id, name, type, category, ticket_amount, start_date, end_date, total_tickets, short_description, long_description, ticket_image, gallery, link, host, location, callback) {
+  async createEventModel(user_id, name, type, category, ticket_amount, start_date, end_date, total_tickets, short_description, long_description, ticket_image, gallery, teaser_playback, host, location, callback) {
 
     // console.log(user_id, name, type, category, ticket_amount, start_date, end_date, total_tickets, short_description, long_description, ticket_image, gallery, link, host, location)
 
@@ -363,7 +380,7 @@ class userModel {
     const secondDate = new Date(end_date);
     const expiration_duration = Math.round(Math.abs((firstDate - secondDate) / oneDay));
 
-    console.log(expiration_duration, "expiration_duration")
+   
 
     const get_user_name = await DBQuery(`SELECT * FROM users WHERE id = '${user_id}'`);
     let user_name = get_user_name.rows[0].wallet_address
@@ -420,10 +437,10 @@ class userModel {
         }
       }
 
-      const sql = `INSERT INTO events(user_id,name,type,category,ticket_amount,date,total_tickets,short_description, long_description,ticket_image,gallery,link,host,location,status,created_at,contract_address,event_day_count) 
+      const sql = `INSERT INTO events(user_id,name,type,category,ticket_amount,date,total_tickets,short_description, long_description,ticket_image,gallery,teaser_playback,host,location,status,created_at,contract_address,event_day_count) 
       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,0,CURRENT_TIMESTAMP,$15,$16) RETURNING *`;
 
-      const values = [user_id, name, type, category, ticket_amount, start_date, total_tickets, short_description, long_description, ticket_image, gallery, link, host, location, val,expiration_duration];
+      const values = [user_id, name, type, category, ticket_amount, start_date, total_tickets, short_description, long_description, ticket_image, gallery, teaser_playback, host, location, val,expiration_duration];
 
       connection.query(sql, values, (err, result) => {
         if (err) {
@@ -646,6 +663,9 @@ class userModel {
 
       let streamData = {
         name: digit,
+        playbackPolicy: {
+          type: 'jwt'
+        },
         profiles: [
           {
             name: "720p",
@@ -680,33 +700,61 @@ class userModel {
           Authorization: AuthStr,
         },
       }).then(async (response) => {
-        // callback(value.data);
+        //Enable Recording Patch
+     
         if (Object.keys(response.data).length > 0) {
           const { name, id, createdAt, streamKey, playbackId } = response.data;
+          
+          await axios({
+            method: "PATCH",
+            url: `https://livepeer.studio/api/stream/${id}/record`,
+            data: {"record":true},
+            headers: {
+              "content-type": "application/json",
+              Authorization: AuthStr,
+            },
+          }).then(async (response)=>{
+            const dta = await DBQuery(`delete FROM streams WHERE user_id = '${user_id}'`);
 
-          const dta = await DBQuery(`delete FROM streams WHERE user_id = '${user_id}'`);
-
-          const sql = `INSERT INTO streams(api_key, stream_id,playback_id,stream_name,created_at,user_id,stream_key) VALUES('${api_key}', '${id}', '${playbackId}', '${name}',CURRENT_TIMESTAMP,'${user_id}','${streamKey}')`
-          connection.query(sql, (err, _result) => {
-            if (err) {
-              callback(false, translations['en']['SYSTEM_ERROR']);
-            } else {
-              // callback(response.data);
-
-              const sql = `select s.*,e.name from streams as s 
-                left join events as e on s.user_id = e.id
-                where s.user_id = '${user_id}'`;
-              connection.query(sql, (err, result) => {
-                console.log(err, "err")
-                if (err) {
-                  callback(false, translations[language]['SYSTEM_ERROR']);
-                } else {
-                  callback(result.rows);
-                }
-              })
-
-            }
+            const sql = `INSERT INTO streams(api_key, stream_id,playback_id,stream_name,created_at,user_id,stream_key) VALUES('${api_key}', '${id}', '${playbackId}', '${name}',CURRENT_TIMESTAMP,'${user_id}','${streamKey}')`
+            connection.query(sql, (err, _result) => {
+              if (err) {
+                callback(false, translations['en']['SYSTEM_ERROR']);
+              } else {
+                // callback(response.data);
+  
+                const sql = `select s.*,e.name from streams as s 
+                  left join events as e on s.user_id = e.id
+                  where s.user_id = '${user_id}'`;
+                connection.query(sql, async (err, result) => {
+                  if (err) {
+                    callback(false, translations[language]['SYSTEM_ERROR']);
+                  } else {
+                    /*Generate a token for streamer and add token in rows*/
+                    const accessControlPrivateKey = process.env.LIVEPEER_PRIVATE_KEY;
+                    const accessControlPublicKey = process.env.LIVEPEER_PUBLIC_KEY;
+                    const token = await signAccessJwt({
+                      privateKey: accessControlPrivateKey,
+                      publicKey: accessControlPublicKey,
+                      issuer: 'https://livepeerjs.org',
+                      // playback ID to include in the JWT
+                      playbackId,
+                      // expire the JWT in 1 hour
+                      expiration: '1h',
+                      custom: {
+                        userId: 'Admin'
+                      }
+                    });
+                    result.rows[0].token = token;
+                    callback(result.rows);
+                  }
+                })
+  
+              }
+            })
           })
+
+         
 
         } else {
           callback(false, "Stream is not created!!!!");
@@ -719,7 +767,7 @@ class userModel {
   }
 
   async getStreamModel(authorizationHeader, api_key, stream_id, language, callback) {
-
+    /*Authenticate Server*/
     try {
       const streamStatusResponse = await axios({
         method: "get",
@@ -732,12 +780,32 @@ class userModel {
       }).then((streamStatusResponse) => {
         callback(streamStatusResponse.data);
       })
-
-
     } catch (error) {
-      console.log(error)
       callback(error);
     }
+  }
+
+  async getStorageDetails(callback){
+        /*Authenticate Server*/
+        try {
+          const AuthStr = "Bearer ".concat(process.env.LIVEPEER_API_KEY);
+          
+          const storageResponse = await axios({
+            method: "POST",
+            url: `https://livepeer.studio/api/asset/request-upload`,
+            data: JSON.stringify({ name: `${new Date().getTime()}-maven`}),
+            headers: {
+              "content-type": "application/json",
+              "Authorization": AuthStr,
+              "Accept-Encoding": "gzip,deflate,compress"
+            }
+          }).then((storageResponse) => {
+            callback(storageResponse.data);
+          })
+        } catch (error) {
+          console.log(error);
+          callback(error);
+        }
   }
 
   getLivePlayBackModel(language, user_id, callback) {
@@ -750,6 +818,18 @@ class userModel {
         callback(false, translations[language]['SYSTEM_ERROR']);
       } else {
         callback(result.rows);
+      }
+    })
+  }
+  getArtistDetails(id,language,callback){
+    
+    const sql = `select * from events
+          where id = ${id}`;
+      connection.query(sql, (err, result) => {
+      if (err) {
+      callback(false, translations[language]['SYSTEM_ERROR']);
+      } else {
+      callback(result.rows);
       }
     })
   }

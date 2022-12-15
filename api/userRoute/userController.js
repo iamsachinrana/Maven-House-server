@@ -186,7 +186,7 @@ class userController {
       "long_description": "required",
       "ticket_image": "required",
       "gallery": "required",
-      "link": "required",
+      "teaser_playback": "required",
       "host": "required",
       "location": "required"
     };
@@ -203,8 +203,8 @@ class userController {
 
         // console.log("call")
         const user_id = 65;
-        const { name, type, category, ticket_amount, start_date, end_date, total_tickets, short_description, long_description, ticket_image, gallery, link, host, location } = req.body;
-        user.createEventModel(user_id, name, type, category, ticket_amount, start_date, end_date, total_tickets, short_description, long_description, ticket_image, gallery, link, host, location, (data, error) => {
+        const { name, type, category, ticket_amount, start_date, end_date, total_tickets, short_description, long_description, ticket_image, gallery, teaser_playback, host, location } = req.body;
+        user.createEventModel(user_id, name, type, category, ticket_amount, start_date, end_date, total_tickets, short_description, long_description, ticket_image, gallery, teaser_playback, host, location, (data, error) => {
           let response = { status: 0, data: null, error: null };
           if (data === false) {
             response.status = 0;
@@ -460,9 +460,39 @@ class userController {
     })
   }
 
+  getStorageDetails(req, res) {
+
+    user.getStorageDetails((data, error) => {
+      let response = { status: 0, data: null, error: null };
+      if (data === false) {
+        response.status = 0;
+        response.error = error;
+      } else {
+        response.status = 1;
+        response.data = data;
+      }
+      res.send(response);
+    })
+  }
+
   getLivePlayBack(req, res) {
     const { language, user_id } = req.query;
     user.getLivePlayBackModel(language, user_id, (data, error) => {
+      let response = { status: 0, data: null, error: null };
+      if (data === false) {
+        response.status = 0;
+        response.error = error;
+      } else {
+        response.status = 1;
+        response.data = data;
+      }
+      res.send(response);
+    })
+  }
+  getArtist(req,res){
+    const { id } = req.params;
+    const {language} = req.query;
+    user.getArtistDetails(id,language, (data, error) => {
       let response = { status: 0, data: null, error: null };
       if (data === false) {
         response.status = 0;

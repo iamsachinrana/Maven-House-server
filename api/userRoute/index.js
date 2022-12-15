@@ -41,10 +41,12 @@ router.post('/create-stream', user.createStream);
 router.post('/get-stream', user.getStream);
 
 
+router.get('/get-storage-details', user.getStorageDetails);
 router.get('/get-live-playback', user.getLivePlayBack);
 
 
 /*change password*/
 router.post('/change-password', user.changePassword);
+router.get('/artist/:id',user.getArtist);
 
 module.exports = router;
