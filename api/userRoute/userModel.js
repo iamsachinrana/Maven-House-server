@@ -23,14 +23,13 @@ const { WalletService } = require("@unlock-protocol/unlock-js");
 const { networks } = require('@unlock-protocol/networks');
 const ethUtil = require('ethereumjs-util');
 const {
-  web3, getAuthConsentMessage, generateTokenId, getContractAddress,
-  getZeroAddress, getCalldata, getReplacementPattern,
-  getHashMessage, getWalletAddress, tokenAddress, getEventAuthConsentMessage
+  web3, getAuthConsentMessage,storeFiles,getEventAuthConsentMessage,
+  getFilesToUpload,
 } = require('../../web3');
 const { response } = require('express');
 const { parse } = require('path');
 const abis = require("@unlock-protocol/contracts");
-const {signAccessJwt} = require('livepeer/crypto');
+const { signAccessJwt } = require('livepeer/crypto');
 
 class userModel {
 

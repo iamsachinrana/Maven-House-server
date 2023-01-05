@@ -1,8 +1,11 @@
 const Web3 = require('web3');
+const fs = require('fs');
 const { AbiItem } = require('web3-utils');
 const { Contract } = require('web3-eth-contract');
 const { HttpProvider, WebsocketProvider, Account, TransactionReceipt } = require('web3-core');
 const { WebsocketProviderOptions } = require('web3-core-helpers');
+const { Web3Storage, File, getFilesFromPath } = require('web3.storage');
+
 // const { Chain, Provider, Event, Token } = require('../types');
 // const Contracts = require('./contracts');
 // const { OrderSide } = require('../models/Arts');
@@ -343,4 +346,40 @@ const getTransactionGasFees = async (transactionHash, chain) => {
   return gas;
 };
 
-module.exports = { web3, getZeroAddress, getProvider, getWalletAddress, transferAmount, getContractInstance, getAuthConsentMessage, getHashMessage, generateTokenId, getCalldata, getReplacementPattern, subscribeEvent, getTransactionGasFees, getEventAuthConsentMessage };
+function makeStorageClient() {
+  return new Web3Storage({ token: process.env.WEB3STORAGE_TOKEN })
+}
+
+const getFileBuffer = (path) => {
+  return new Promise((resolve, reject) => {
+    let chunks = '';
+    const stream = fs.createReadStream(path);
+
+    stream.on('data', (chunk) => {
+      chunks += chunk;
+    })
+
+    stream.on('end', () => {
+      resolve(chunks);
+    })
+
+    stream.on('error', (err) => {
+      reject(err);
+    })
+  });
+}
+
+async function getFilesToUpload(path) {
+  const files = await getFilesFromPath(path)
+  console.log(`read ${files.length} file(s) from ${path}`)
+  return files
+}
+
+async function storeFiles(files, options) {
+  const client = makeStorageClient()
+  const cid = await client.put(files,options)
+  console.log('stored files with cid:', cid)
+  return cid
+}
+
+module.exports = { web3, makeStorageClient, getFilesToUpload, storeFiles, getZeroAddress, getProvider, getWalletAddress, transferAmount, getContractInstance, getAuthConsentMessage, getHashMessage, generateTokenId, getCalldata, getReplacementPattern, subscribeEvent, getTransactionGasFees, getEventAuthConsentMessage };

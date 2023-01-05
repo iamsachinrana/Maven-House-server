@@ -17,6 +17,10 @@ const validatePhoneNumber = require('validate-phone-number-node-js');
 const {
   welcomeUserModel
 } = require('./userModel');
+const CID = require('cids')
+const {
+ storeFiles, getFilesToUpload,
+} = require('../../web3');
 
 class userController {
 
@@ -173,6 +177,19 @@ class userController {
       }
       res.send(response);
     })
+  }
+
+  uploadToWebStorage =async  (file) => {
+     return storeFiles(await getFilesToUpload(file),  {wrapWithDirectory: false})
+  }
+
+   uploadToIpfs =async (req, res) => {
+    if (!req.file) {
+      return res.end(400);
+    } else {
+      const cid = await this.uploadToWebStorage(`uploads/${req.file.filename}`);
+      res.send({cid})
+    }
   }
 
   createEvent(req, res) {
