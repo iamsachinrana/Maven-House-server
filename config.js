@@ -7,7 +7,10 @@ module.exports.CLIENT_URL = process.env.CLIENT_URL;
 
 module.exports.CREATE_UPLOADS_DIR = () => {
   const uploadDirectories = [
-    'uploads'
+    'uploads',
+    'uploads/ticket_images',
+    'uploads/profile_images',
+    'uploads/gallery_images'
   ];
 
   for (let i = 0; i < uploadDirectories.length; i++) {
