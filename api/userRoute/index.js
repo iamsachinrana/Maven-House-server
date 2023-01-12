@@ -21,7 +21,7 @@ router.put('/profile', upload.single('profile_image'), user.updateUser);
 router.delete('/profile', user.deleteUser);
 
 /*events*/
-router.post('/upload-to-ipfs',upload.single('asset'), user.uploadToIpfs);
+router.post('/upload-to-ipfs', upload.single('asset'), user.uploadToIpfs);
 router.post('/create-event', user.createEvent);
 router.get('/get-events', user.getAllEvents);
 router.get('/event', user.getEvent);
@@ -48,6 +48,8 @@ router.get('/get-live-playback', user.getLivePlayBack);
 
 /*change password*/
 router.post('/change-password', user.changePassword);
-router.get('/artist/:id',user.getArtist);
+router.get('/artist/:id', user.getArtist);
+
+router.post('/send-notification', user.sendNotification);
 
 module.exports = router;

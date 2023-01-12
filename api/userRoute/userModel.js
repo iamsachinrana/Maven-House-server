@@ -23,13 +23,21 @@ const { WalletService } = require("@unlock-protocol/unlock-js");
 const { networks } = require('@unlock-protocol/networks');
 const ethUtil = require('ethereumjs-util');
 const {
-  web3, getAuthConsentMessage,storeFiles,getEventAuthConsentMessage,
+  web3, getAuthConsentMessage, storeFiles, getEventAuthConsentMessage,
   getFilesToUpload,
 } = require('../../web3');
 const { response } = require('express');
 const { parse } = require('path');
 const abis = require("@unlock-protocol/contracts");
 const { signAccessJwt } = require('livepeer/crypto');
+const PushAPI = require("@pushprotocol/restapi");
+const { env } = require('process');
+
+const PK = env.PUSH_ACCOUNT_PRIVATE_KEY // channel private key
+const Pkey = `0x${PK}`;
+const signer = new ethers.Wallet(Pkey);
+
+
 
 class userModel {
 
@@ -116,10 +124,10 @@ class userModel {
       callback(false, translations['en']['MSG019']);
     }
     address = web3.utils.toChecksumAddress(address);
-
+    console.log(address);
     const wallet_details = await DBQuery(`SELECT * FROM users WHERE wallet_address = '${address}'`);
-
-    if (wallet_details.rows.length === 0) {
+    console.log(JSON.stringify(wallet_details));
+    if (wallet_details.rows?.length === 0) {
 
       const nonce = Math.floor((Math.random() + 1) * 100000);
       const wallet_details = await DBQuery(`INSERT INTO users(wallet_address,nounce) VALUES('${address}','${nonce}')`);
@@ -128,6 +136,7 @@ class userModel {
     } else {
 
       const wallet_details = await DBQuery(`SELECT * FROM users WHERE wallet_address = '${address}'`);
+
       const authConsentMessage = getAuthConsentMessage(address, wallet_details.rows[0]?.nounce);
       callback({ consent: authConsentMessage });
     }
@@ -204,25 +213,29 @@ class userModel {
                 if (result) {
                   const { contract_address, playback_id } = result?.rows[0];
 
-                  let url = 'https://rpc-mumbai.maticvigil.com/';
-                  let provider = new ethers.providers.JsonRpcProvider(url);
-                  const contract = new ethers.Contract(contract_address, abis.PublicLockV11.abi, provider);
+                  if (!playback_id) {
+                    callback(false, "Event is not live yet!")
+                  }
+                  else {
+                    let url = 'https://rpc-mumbai.maticvigil.com/';
+                    let provider = new ethers.providers.JsonRpcProvider(url);
 
+                    const contract = new ethers.Contract(contract_address, abis.PublicLockV11.abi, provider);
 
-                  let tokenBalance = (await contract.balanceOf(`${address}`)).toString();
-                  if (parseInt(tokenBalance) > 0) {
-                    const user = {
-                      id: result.rows[0].id,
-                      address: result.rows[0].wallet_address,
-                      status: result.rows[0].status,
-                      type: result.rows[0].user_type,
-                      event_id: event_id
-                    }
-
-                    jwt.sign({ user }, process.env.TOKEN_SECRET_KEY, { expiresIn: '1 days' }, async (err, result) => {
-                      if (err) {
-                        callback(false, err);
-                      } else {
+                    let tokenBalance = (await contract.balanceOf(`${address}`)).toString();
+                    if (parseInt(tokenBalance) > 0) {
+                      const user = {
+                        id: result.rows[0].id,
+                        address: result.rows[0].wallet_address,
+                        status: result.rows[0].status,
+                        type: result.rows[0].user_type,
+                        event_id: event_id
+                      }
+                      try {
+                        jwt.sign({ user }, process.env.TOKEN_SECRET_KEY, { expiresIn: '1 days' }, async (err, result) => {
+                          if (err) {
+                            callback(false, err);
+                          } else {
                             const accessControlPrivateKey = process.env.LIVEPEER_PRIVATE_KEY;
                             const accessControlPublicKey = process.env.LIVEPEER_PUBLIC_KEY;
                             const token = await signAccessJwt({
@@ -237,20 +250,29 @@ class userModel {
                                 userId: address
                               }
                             });
-                        callback({ token: token });
+                            callback({ token: token });
+                          }
+                        })
+                      } catch (error) {
+                        callback(false, JSON.stringify(error));
                       }
-                    })
+
+                    }
+                    else {
+                      callback(false, "You are not a valid user")
+                    }
                   }
-                  else {
-                    callback(false, "You are not a valid user")
-                  }
+
+
+
+
                 }
               }
             })
             // Set jwt token
-              /*Create a JWT TOKEN For USER*/
+            /*Create a JWT TOKEN For USER*/
 
-            
+
 
           } else {
             // User is not authenticated
@@ -379,7 +401,7 @@ class userModel {
     const secondDate = new Date(end_date);
     const expiration_duration = Math.round(Math.abs((firstDate - secondDate) / oneDay));
 
-   
+
 
     const get_user_name = await DBQuery(`SELECT * FROM users WHERE id = '${user_id}'`);
     let user_name = get_user_name.rows[0].wallet_address
@@ -399,7 +421,7 @@ class userModel {
         {
           maxNumberOfKeys: total_tickets,
           name: name,
-          expirationDuration: parseInt(expiration_duration)*86400,
+          expirationDuration: parseInt(expiration_duration) * 86400,
           keyPrice: ticket_amount.toString(),
           publicLockVersion: 0 // Key price needs to be a string
         },
@@ -439,7 +461,7 @@ class userModel {
       const sql = `INSERT INTO events(user_id,name,type,category,ticket_amount,date,total_tickets,short_description, long_description,ticket_image,gallery,teaser_playback,host,location,status,created_at,contract_address,event_day_count) 
       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,0,CURRENT_TIMESTAMP,$15,$16) RETURNING *`;
 
-      const values = [user_id, name, type, category, ticket_amount, start_date, total_tickets, short_description, long_description, ticket_image, gallery, teaser_playback, host, location, val,expiration_duration];
+      const values = [user_id, name, type, category, ticket_amount, start_date, total_tickets, short_description, long_description, ticket_image, gallery, teaser_playback, host, location, val, expiration_duration];
 
       connection.query(sql, values, (err, result) => {
         if (err) {
@@ -700,19 +722,19 @@ class userModel {
         },
       }).then(async (response) => {
         //Enable Recording Patch
-     
+
         if (Object.keys(response.data).length > 0) {
           const { name, id, createdAt, streamKey, playbackId } = response.data;
-          
+
           await axios({
             method: "PATCH",
             url: `https://livepeer.studio/api/stream/${id}/record`,
-            data: {"record":true},
+            data: { "record": true },
             headers: {
               "content-type": "application/json",
               Authorization: AuthStr,
             },
-          }).then(async (response)=>{
+          }).then(async (response) => {
             const dta = await DBQuery(`delete FROM streams WHERE user_id = '${user_id}'`);
 
             const sql = `INSERT INTO streams(api_key, stream_id,playback_id,stream_name,created_at,user_id,stream_key) VALUES('${api_key}', '${id}', '${playbackId}', '${name}',CURRENT_TIMESTAMP,'${user_id}','${streamKey}')`
@@ -721,7 +743,7 @@ class userModel {
                 callback(false, translations['en']['SYSTEM_ERROR']);
               } else {
                 // callback(response.data);
-  
+
                 const sql = `select s.*,e.name from streams as s 
                   left join events as e on s.user_id = e.id
                   where s.user_id = '${user_id}'`;
@@ -748,12 +770,12 @@ class userModel {
                     callback(result.rows);
                   }
                 })
-  
+
               }
             })
           })
 
-         
+
 
         } else {
           callback(false, "Stream is not created!!!!");
@@ -784,27 +806,27 @@ class userModel {
     }
   }
 
-  async getStorageDetails(callback){
-        /*Authenticate Server*/
-        try {
-          const AuthStr = "Bearer ".concat(process.env.LIVEPEER_API_KEY);
-          
-          const storageResponse = await axios({
-            method: "POST",
-            url: `https://livepeer.studio/api/asset/request-upload`,
-            data: JSON.stringify({ name: `${new Date().getTime()}-maven`}),
-            headers: {
-              "content-type": "application/json",
-              "Authorization": AuthStr,
-              "Accept-Encoding": "gzip,deflate,compress"
-            }
-          }).then((storageResponse) => {
-            callback(storageResponse.data);
-          })
-        } catch (error) {
-          console.log(error);
-          callback(error);
+  async getStorageDetails(callback) {
+    /*Authenticate Server*/
+    try {
+      const AuthStr = "Bearer ".concat(process.env.LIVEPEER_API_KEY);
+
+      const storageResponse = await axios({
+        method: "POST",
+        url: `https://livepeer.studio/api/asset/request-upload`,
+        data: JSON.stringify({ name: `${new Date().getTime()}-maven` }),
+        headers: {
+          "content-type": "application/json",
+          "Authorization": AuthStr,
+          "Accept-Encoding": "gzip,deflate,compress"
         }
+      }).then((storageResponse) => {
+        callback(storageResponse.data);
+      })
+    } catch (error) {
+      console.log(error);
+      callback(error);
+    }
   }
 
   getLivePlayBackModel(language, user_id, callback) {
@@ -820,17 +842,49 @@ class userModel {
       }
     })
   }
-  getArtistDetails(id,language,callback){
-    
+  getArtistDetails(id, language, callback) {
+
     const sql = `select * from events
           where id = ${id}`;
-      connection.query(sql, (err, result) => {
+    connection.query(sql, (err, result) => {
       if (err) {
-      callback(false, translations[language]['SYSTEM_ERROR']);
+        callback(false, translations[language]['SYSTEM_ERROR']);
       } else {
-      callback(result.rows);
+        callback(result.rows);
       }
     })
+  }
+
+  async sendPushNotification(message, link, language, callback) {
+    //Send Push Notification
+    try {
+      const apiResponse = await PushAPI.payloads.sendNotification({
+        signer,
+        type: 1, // target
+        identityType: 2, // direct payload
+        notification: {
+          title: `MAVEN-HOUSE`,
+          body: message
+        },
+        payload: {
+          title: `MAVEN-HOUSE`,
+          body: message,
+          cta: link,
+        },
+        channel: `eip155:80001:${env.PUSH_CHANNEL}`, // your channel address
+        env: 'staging'
+      });
+
+      if (apiResponse?.status === 204) {
+        callback({ message: 'Successfully send!' });
+      }
+      else {
+        callback(false, translations[language]['SYSTEM_ERROR']);
+      }
+    } catch (err) {
+      console.error('Error: ', err);
+      callback(false, translations[language]['SYSTEM_ERROR']);
+    }
   }
 
 }
